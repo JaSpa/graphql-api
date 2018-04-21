@@ -36,6 +36,7 @@ module GraphQL.Internal.OrderedMap
   , empty
   , singleton
   , orderedMap
+  , unsafeOrderedMap
   -- * Querying
   , lookup
   -- * Filtering
@@ -195,3 +196,6 @@ orderedMap entries
   | otherwise = Nothing
   where
     ks = map fst entries
+
+unsafeOrderedMap :: [key] -> Map key value -> OrderedMap key value
+unsafeOrderedMap = OrderedMap
