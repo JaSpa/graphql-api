@@ -20,10 +20,11 @@ module GraphQL.Internal.Name
 
 import Protolude
 
+import Control.Monad (fail)
 import qualified Data.Aeson as Aeson
 import GHC.TypeLits (Symbol, KnownSymbol, symbolVal)
 import Data.Char (isDigit)
-import Data.Text as T (Text)
+import Data.Text as T (Text, unpack)
 import qualified Data.Attoparsec.Text as A
 import Test.QuickCheck (Arbitrary(..), elements, listOf)
 import Data.String (IsString(..))
@@ -95,6 +96,14 @@ instance IsString Name where
 
 instance Aeson.ToJSON Name where
   toJSON = Aeson.toJSON . unName
+
+instance Aeson.FromJSON Name where
+  parseJSON = Aeson.withText "invalid GraphQL name" f
+    where
+      f = either (fail . err) return . makeName
+      err (NameError name) = "invalid GraphQL name \"" ++ unpack name ++ "\""
+
+instance Aeson.FromJSONKey Name
 
 instance Arbitrary Name where
   arbitrary = do

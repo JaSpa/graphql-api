@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_HADDOCK not-home #-}
 
 -- | Description: The GraphQL AST
@@ -49,6 +50,7 @@ module GraphQL.Internal.Syntax.AST
   ) where
 
 import Protolude
+import Data.Aeson (FromJSONKey)
 
 import Test.QuickCheck (Arbitrary(..), listOf, oneof)
 
@@ -83,7 +85,7 @@ data Node = Node (Maybe Name) [VariableDefinition] [Directive] SelectionSet
 data VariableDefinition = VariableDefinition Variable GType (Maybe DefaultValue)
                           deriving (Eq,Show)
 
-newtype Variable = Variable Name deriving (Eq, Ord, Show)
+newtype Variable = Variable Name deriving (Eq, Ord, Show, FromJSONKey)
 
 instance Arbitrary Variable where
   arbitrary = Variable <$> arbitrary

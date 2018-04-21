@@ -52,7 +52,9 @@ module GraphQL.Internal.Value
 import Protolude
 
 import qualified Data.Aeson as Aeson
-import Data.Aeson (ToJSON(..), (.=), pairs)
+import Data.Aeson (FromJSON(..), ToJSON(..), (.=), pairs)
+import Data.Aeson.Types (typeMismatch)
+import Data.Scientific
 import qualified Data.Map as Map
 import Test.QuickCheck (Arbitrary(..), Gen, oneof, listOf, sized)
 
@@ -60,7 +62,7 @@ import GraphQL.Internal.Arbitrary (arbitraryText)
 import GraphQL.Internal.Name (Name(..), NameError(..), makeName)
 import GraphQL.Internal.Syntax.AST (Variable)
 import qualified GraphQL.Internal.Syntax.AST as AST
-import GraphQL.Internal.OrderedMap (OrderedMap)
+import GraphQL.Internal.OrderedMap (OrderedMap, unsafeOrderedMap)
 import qualified GraphQL.Internal.OrderedMap as OrderedMap
 
 -- * Values
@@ -91,6 +93,14 @@ instance ToJSON scalar => ToJSON (Value' scalar) where
   toJSON (ValueScalar' x) = toJSON x
   toJSON (ValueList' x) = toJSON x
   toJSON (ValueObject' x) = toJSON x
+
+instance FromJSON scalar => FromJSON (Value' scalar) where
+  parseJSON v = asum [ ValueObject' . Object' . f <$> Aeson.parseJSON v
+                     , ValueList' . List' <$> Aeson.parseJSON v
+                     , ValueScalar' <$> Aeson.parseJSON v
+                     ]
+    where
+      f m = unsafeOrderedMap (Map.keys m) m
 
 instance Arbitrary scalar => Arbitrary (Value' scalar) where
   -- | Generate an arbitrary value. Uses the generator's \"size\" property to
@@ -168,6 +178,14 @@ instance ToJSON ConstScalar where
   toJSON (ConstString x) = toJSON x
   toJSON (ConstEnum x) = toJSON x
   toJSON ConstNull = Aeson.Null
+
+instance FromJSON ConstScalar where
+  parseJSON (Aeson.String s) = return $ ConstString $ String s
+  parseJSON (Aeson.Number n) = return $
+    maybe (ConstFloat $ toRealFloat n) ConstInt $ toBoundedInteger n
+  parseJSON (Aeson.Bool b) = return $ ConstBoolean b
+  parseJSON Aeson.Null = return ConstNull
+  parseJSON v = typeMismatch "invalid scalar" v
 
 -- | A value which contains no other values, and might be a variable that
 -- might lack a definition.
